@@ -34,8 +34,8 @@ pub fn listen_for_slp_creation(
     Ok(())
 }
 
-pub fn get_opponent_connect_code(p: &PathBuf, player_code: &ConnectCode) -> ConnectCode {
-    let mut buf = io::BufReader::new(fs::File::open(p).unwrap());
+pub fn get_opponent_connect_code(slp_path: &PathBuf, player_code: &ConnectCode) -> ConnectCode {
+    let mut buf = io::BufReader::new(fs::File::open(slp_path).unwrap());
     let no_frames_options = Opts {
         skip_frames: true,
         debug_dir: None,
@@ -153,5 +153,14 @@ mod tests {
         let cody_code = ConnectCode::new("IBDW".to_string(), 0);
         let cody_from_str = ConnectCode::from_str(cody_str).unwrap();
         assert_eq!(cody_from_str, cody_code);
+    }
+
+    #[test]
+    fn get_opponent_connect_code_test() {
+        let player_code = ConnectCode::from_str("FLOS#497").unwrap();
+        let opp_code_from_file =
+            get_opponent_connect_code(&PathBuf::from_str("test.slp").unwrap(), &player_code);
+        let opp_code = ConnectCode::new("SNAPE".to_string(), 0);
+        assert_eq!(opp_code_from_file, opp_code);
     }
 }
