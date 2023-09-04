@@ -1,22 +1,32 @@
-use notify::{Config, RecommendedWatcher, RecursiveMode, Result, Watcher};
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 
 use reqwest::{self, Response};
 
 use scraper::{Html, Selector};
 
+use peppi::serde::de::Opts;
+
 use std::fmt;
 use std::path::PathBuf;
+use std::str::FromStr;
+use std::{fs, io};
 
-pub fn listen_for_slp_creation(slp_path: PathBuf, player_code: ConnectCode) -> notify::Result<()> {
+pub fn listen_for_slp_creation(
+    slp_directory: PathBuf,
+    player_code: ConnectCode,
+) -> notify::Result<()> {
     let (tx, rx) = std::sync::mpsc::channel();
 
     let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
 
-    watcher.watch(&slp_path, RecursiveMode::Recursive)?;
+    watcher.watch(&slp_directory, RecursiveMode::Recursive)?;
 
     for res in rx {
         match res {
-            Ok(event) => get_opponent_connect_code(),
+            Ok(event) => {
+                let opp_code = get_opponent_connect_code(&event.paths[0], &player_code);
+                println!("opp_code: {}", opp_code);
+            }
             Err(error) => eprintln!("Error: {error:?}"),
         }
     }
@@ -24,7 +34,24 @@ pub fn listen_for_slp_creation(slp_path: PathBuf, player_code: ConnectCode) -> n
     Ok(())
 }
 
-pub fn get_opponent_connect_code() {}
+pub fn get_opponent_connect_code(p: &PathBuf, player_code: &ConnectCode) -> ConnectCode {
+    let mut buf = io::BufReader::new(fs::File::open(p).unwrap());
+    let no_frames_options = Opts {
+        skip_frames: true,
+        debug_dir: None,
+    };
+
+    let game = peppi::game(&mut buf, Some(&no_frames_options), None).unwrap();
+    let players = game.metadata.players.unwrap();
+
+    let opp_code_string = if player_code.to_string() != players[0].netplay.as_ref().unwrap().code {
+        &players[0].netplay.as_ref().unwrap().code
+    } else {
+        &players[1].netplay.as_ref().unwrap().code
+    };
+
+    ConnectCode::from_str(&opp_code_string).unwrap()
+}
 
 pub fn get_connect_code_page_data(code: ConnectCode) -> reqwest::Result<String> {
     reqwest::blocking::get(format!(
@@ -75,6 +102,26 @@ impl WinLossData {
 impl fmt::Display for ConnectCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}#{}", self.name, self.discriminant)
+    }
+}
+
+#[derive(Debug)]
+pub struct ParseConnectCodeError;
+
+impl FromStr for ConnectCode {
+    type Err = ParseConnectCodeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let split_str = s.split_once('#').unwrap();
+        let (name, discriminant_str) = split_str;
+        let discriminant = discriminant_str
+            .parse::<usize>()
+            .map_err(|_| ParseConnectCodeError)?;
+
+        Ok(ConnectCode {
+            name: name.to_string(),
+            discriminant,
+        })
     }
 }
 
