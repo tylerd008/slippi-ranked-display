@@ -74,6 +74,7 @@ pub fn get_win_loss_data(page_data: String) -> WinLossData {
     WinLossData::new(0, 0)
 }
 
+#[derive(Debug, PartialEq)]
 pub struct ConnectCode {
     name: String,
     discriminant: usize,
@@ -127,8 +128,7 @@ impl FromStr for ConnectCode {
 
 #[cfg(test)]
 mod tests {
-    use crate::{get_connect_code_page_data, get_win_loss_data, ConnectCode};
-    use std::fmt;
+    use super::*;
     #[test]
     fn get_slippi_page_test() {
         let cody = ConnectCode::new("IBDW".to_string(), 0);
@@ -145,5 +145,13 @@ mod tests {
         let page_data = get_connect_code_page_data(cody).unwrap();
         println!("Page Data: {}", page_data);
         get_win_loss_data(page_data);
+    }
+
+    #[test]
+    fn connect_code_from_str_test() {
+        let cody_str = "IBDW#0";
+        let cody_code = ConnectCode::new("IBDW".to_string(), 0);
+        let cody_from_str = ConnectCode::from_str(cody_str).unwrap();
+        assert_eq!(cody_from_str, cody_code);
     }
 }
