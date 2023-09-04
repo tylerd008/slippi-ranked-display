@@ -1,0 +1,2 @@
+# slippi-ranked-display
+Within the current implementation of Ranked in Slippi, there is no way to view your opponent's rank without URL editing. This progam provides a way to see your opponents rank with no effort on your part, updating automatically for each new opponent. This program is currently non-functional and this README will be updated with instructions on how to use once the program works.
